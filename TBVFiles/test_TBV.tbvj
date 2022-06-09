@@ -1,0 +1,74 @@
+{
+    "DataFormatInfo": {
+        "DataType": "SIEMENS_DICOM_MOSAIC",
+        "DicomFirstImageNr": 1,
+        "DicomFirstVolumeNr": 1,
+        "DicomNameDelimiter": "_",
+        "DicomNameExtension": "dcm",
+        "FirstFileName": "001_000001_000001.dcm",
+        "FlipSliceOrderFuncData": true,
+        "GapThickness": 0.75,
+        "InplaneFoVX": 192,
+        "InplaneFoVY": 192,
+        "MatrixSizeX": 64,
+        "MatrixSizeY": 64,
+        "MosaicResolutionX": 384,
+        "MosaicResolutionY": 384,
+        "NrOfColumns": 6,
+        "NrOfRows": 6,
+        "NrOfSlices": 36,
+        "SliceThickness": 3
+    },
+    "DefaultBrightnessFunc": 40,
+    "DefaultContrastFunc": 50,
+    "FoldersInfo": {
+        "FeedbackTargetFolder": "./TBV_data/",
+        "TargetFolder": "./TBV_data/",
+        "WatchFolder": "./TBV_folder/"
+    },
+    "ForceTRDelay": false,
+    "InplaneOverlayInfo": {
+        "OverlayInplaneData": false,
+        "OverlayOnCurrentEPI": true,
+        "ShowEPIAfterSpatialPP": true
+    },
+    "OverlaySRFInfo": {
+        "OverlayOnSRFMode": 0
+    },
+    "OverlayVMRInfo": {
+        "FlipSliceOrderInVolumeView": false,
+        "IncludeFAStepForFMVMRCoreg": false,
+        "OverlayMapsOnVMRBackground": true,
+        "OverlayOnVMRMode": 0
+    },
+    "RawDataBigEndian": 0,
+    "ShowGODlgAfterPreparation": false,
+    "StatisticsInfo": {
+        "AddMotionParamsToDM": false,
+        "AutoContrastGenerationLevel": 2,
+        "ClusterSizePixels": 4,
+        "ContrastFile": "",
+        "DriftConfoundPredictors": 1,
+        "IntraSessionMotionCorrection": false,
+        "MotionCorrection": true,
+        "MotionCorrectionWithSincResampling": false,
+        "SpatialGaussianSmoothing": false,
+        "SpatialSmoothingFWHM": 4,
+        "Threshold": 3
+    },
+    "TimeCourseInfo": {
+        "InterSliceTime": 55,
+        "MultiSliceROISelection": 1,
+        "NrOfVolumes": 45,
+        "NrOfVolumesToSkip": 0,
+        "ProjectName": "test_TBV",
+        "ROIColorsFile": "",
+        "ShowDetrendedTCs": true,
+        "SphereRadiusSelection": 5,
+        "StimulationProtocol": "",
+        "TR": 1000
+    },
+    "TimeOutSeconds": 10,
+    "Title": "test_TBV",
+    "Version": 6
+}
