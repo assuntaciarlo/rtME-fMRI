@@ -46,7 +46,7 @@ See Posse et al. and Poser et al. for details.
 
 
 Tested on dicom images from Siemens Prisma_fit scanner (software version syngo MR D13D) and cmrr multi-echo sequence 
-(dicom data are in Siemens mosaic format)
+(dicom data are assumed to be in Siemens mosaic format)
 
 
 Reference:
@@ -70,9 +70,12 @@ import glob
 import sys
 import logging
 from IPython import get_ipython
-get_ipython().run_line_magic('matplotlib', 'qt')
+from tkinter import messagebox
 
+#just for spyder
+#get_ipython().run_line_magic('matplotlib', 'qt')
 
+#%%
 ####################### IMPORT SEQUENCE INFO FROM TBV #########################
 
 # create an instance to access TBV via network plugin
@@ -98,13 +101,14 @@ try:
     tbvj_filename = tbvj[0]     
 except AssertionError as msg:
     print(msg)
+    messagebox.showerror('File Error', msg)
     sys.exit()
     
 # change number of volumes here according to your sequence
 num_echos = 4
 
 # read sequence information from .tbvj file
-num_vol, ser_num = utils.read_TBV_json(tbvj_filename) 
+num_vol, ser_num, first_img_num = utils.read_TBV_json(tbvj_filename) 
 
 # CHECK zfill line 114 aline 59 of using.stack_data_all_TE if you are using a different sequence
 dcm_fmt = "001_{0}_{1}.dcm" 
@@ -115,19 +119,25 @@ logging.basicConfig(filename=tbvj_filename[:-5]+'.log',
             level=logging.INFO)
 
 # save also the T2star images, this will increase total computation time
-save_t2star = True 
+save_t2star = False 
 
 if save_t2star: 
     #make folder to save T2star images
-    t2star_dcm_folder = tbv_files_folder+'/T2star'
+    t2star_dcm_folder = tbv_files_folder+'/T2star_3echos'
     if not(os.path.exists(t2star_dcm_folder)):
         os.mkdir(t2star_dcm_folder)
 
+print('Waiting for dicom images ....')
 print('Echo times: ')
 
 ############################### START ESTIMATION ##############################
 
-for cur_vol in range(num_vol):
+#since we are getting information from TBV and there migth be acquired volumes
+#not included in the protocol (e.g., dummy volumes at the beginning of the run), 
+#the total number of expected volumes is corrected by the number of the first
+#volume TBV is waiting for.
+
+for cur_vol in range(num_vol+first_img_num-1): 
     
     t = time.perf_counter()
     data, echos, dcm = utils.stack_data_all_TE(cur_vol, num_echos, dicom_folder, ser_num, dcm_fmt)
@@ -145,15 +155,15 @@ for cur_vol in range(num_vol):
     dcm.PixelData = combined_data.astype('uint16').tobytes()
     dcm.InstanceNumber = cur_vol+1
     pydicom.filewriter.dcmwrite(os.path.join(tbv_watch_folder,dcm_fmt.format(str(ser_num).zfill(6),
-                                                                       str(cur_vol+1).zfill(6))),dcm, write_like_original=False)
+    #print('Time for saving dicom image: {:.3f} sec'.format(time.perf_counter() - t3))
+        
+                                                                             str(cur_vol+1).zfill(6))),dcm, write_like_original=False)
     if save_t2star:
         #save also T2star data
         dcm.PixelData = T2star.astype('uint16').tobytes()
         pydicom.filewriter.dcmwrite(os.path.join(t2star_dcm_folder,dcm_fmt.format(str(ser_num).zfill(6),
                                                                            str(cur_vol+1).zfill(6))),dcm, write_like_original=False)
-        
-    #print('Time for saving dicom image: {:.3f} sec'.format(time.perf_counter() - t3))
-    
+            
     #print('vol ' + str(cur_vol+1) +' read&write: {:.3f} sec'.format(time.perf_counter() - t) )
     logging.info('vol ' + str(cur_vol+1) +' read&write: {:.3f} sec'.format(time.perf_counter() - t) )
     

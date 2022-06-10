@@ -14,6 +14,7 @@ import time
 from numpy.linalg import pinv
 import os, glob
 import json
+from time import sleep
 
 def read_TBV_json(jsonfile):
     
@@ -32,13 +33,17 @@ def read_TBV_json(jsonfile):
         num_vol: int
             number of exspected volumes
         ser_num: int 
-            dicom series number  
+            dicom series number 
+        first_img_num: int
+            number of the first volume to be processed by TBV
     
     '''
     tbv_data = json.load(open(jsonfile))
     num_vol = tbv_data['TimeCourseInfo']['NrOfVolumes']
     ser_num = tbv_data['DataFormatInfo']['DicomFirstVolumeNr']
-    return int(num_vol), int(ser_num)
+    first_img_num = tbv_data['DataFormatInfo']['DicomFirstImageNr']
+    
+    return int(num_vol), int(ser_num), int(first_img_num)
 
 def stack_data_all_TE(cur_vol, num_echos, dicom_folder, ser_num, dcm_fmt):
     
@@ -76,14 +81,25 @@ def stack_data_all_TE(cur_vol, num_echos, dicom_folder, ser_num, dcm_fmt):
     echos = []
     for i in range(num_echos):
         dcm = [] #istance for dicom path 
+        is_fully_written = False
+        size = -1
         cur_dcm = cur_vol*num_echos+i+1
         
-        while not(dcm): # waiting for dicom
+        while len(dcm)==0 and not(is_fully_written): # waiting for dicom
             
             dcm = glob.glob(os.path.join(dicom_folder, dcm_fmt.format(str(ser_num).zfill(6),
-                                                                      str(cur_dcm).zfill(6)) ))[0]
-        dcm = pydicom.dcmread(dcm)
-        data.append(dcm.pixel_array)    
+                                                                      str(cur_dcm).zfill(6)) ))
+            
+            if len(dcm)!=0: # if the file exists check if it's fully written
+               if os.path.getsize(dcm[0]) != size:
+                   size = os.path.getsize(dcm[0])
+               else:
+                   is_fully_written = True          
+            sleep(0.001)
+            
+        dcm = pydicom.dcmread(dcm[0])
+        data.append(dcm.pixel_array) 
+         
         if cur_vol == 0:
             print(dcm.EchoTime)
             
@@ -138,30 +154,27 @@ def T2star_estimation(data, echos):
     X = np.hstack((np.ones([num_echos,1]),-echos.reshape(-1,1)))
     b_hat = (pinv(X)).dot(np.log(Y1)) # [log(S0);R2star]
     
-    T2star = abs(1/b_hat[1,:])
+    T2star = np.zeros(b_hat[1,:].shape)
+    nozero_idx = np.where(b_hat[1,:]!=0)
+    T2star[nozero_idx] = abs(1/b_hat[1,nozero_idx])
     
-    # threshold image
-    T2star_thresh_max = 500 # arbitrarily chosen, same as tedana.
-    #T2star_thresh_min = 0 # arbitrarily chosen, same as tedana
+    # thresholding T2star map
+    T2star_thresh_max = 500 # same as tedana.
+    
     
     #just for testing return a mask of voxels > T2star_thresh_max and 
     mask_up = np.zeros(T2star.shape)
-    mask_up[np.where(T2star>=T2star_thresh_max)] = 1
-    
-    #no min threshold used because of absolute value
-    #mask_down = np.zeros(T2star.shape)
-    #mask_down[np.where(T2star<=T2star_thresh_min)] = 1
-    
+    mask_up[np.where(T2star>=T2star_thresh_max)] = 1 
     
     T2star[np.where(T2star>T2star_thresh_max)] = T2star_thresh_max #as tedana
-    #T2star[np.where(T2star < T2star_thresh_min)] = T2star_thresh_min
+    
     
     T2star = T2star.reshape(mosaic_dim[0], mosaic_dim[1])
     mask_up = mask_up.reshape(mosaic_dim[0], mosaic_dim[1])
-    #mask_down = mask_down.reshape(mosaic_dim[0], mosaic_dim[1])
+    
  
     
-    return T2star, mask_up #,mask_down
+    return T2star, mask_up 
     
     
  
@@ -202,7 +215,6 @@ def T2star_weighted_comb(data,T2star,echos,mask_up):
     
     '''
     #use mask to avoid nans in the final image
-    #nozero_mask = np.logical_not(mask_up) 
     nozero_mask = np.zeros(T2star.shape).astype(bool)
     nozero_mask[np.where(T2star !=0 )] = 1
    
